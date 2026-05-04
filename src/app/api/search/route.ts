@@ -9,6 +9,12 @@ export interface SearchRequest {
   preferences: string[];
 }
 
+export interface VenuePrices {
+  beer?: number;
+  cocktail?: number;
+  wine?: number;
+}
+
 export interface HappyHourVenue {
   id: string;
   name: string;
@@ -24,6 +30,14 @@ export interface HappyHourVenue {
   website?: string;
   openNow?: boolean;
   categories: string[];
+  /** Typical regular (non-happy-hour) prices in USD */
+  regularPrices?: VenuePrices;
+  /** Prices during happy hour in USD */
+  happyHourPrices?: VenuePrices;
+  /** 24-hour "HH:MM" start of happy hour for today, null if no HH today */
+  todayHappyHourStart?: string | null;
+  /** 24-hour "HH:MM" end of happy hour for today, null if no HH today */
+  todayHappyHourEnd?: string | null;
 }
 
 export interface SearchResponse {
@@ -110,7 +124,7 @@ export async function POST(request: NextRequest) {
     const genAI = new GoogleGenerativeAI(geminiApiKey);
     const geminiModel = genAI.getGenerativeModel({
       model: "gemini-2.0-flash",
-      generationConfig: { responseMimeType: "application/json", temperature: 0.7, maxOutputTokens: 2500 },
+      generationConfig: { responseMimeType: "application/json", temperature: 0.7, maxOutputTokens: 4000 },
     });
     const googleApiKey = process.env.GOOGLE_PLACES_API_KEY;
 
@@ -187,7 +201,11 @@ Based on these real venues and your knowledge of typical happy hour patterns for
       "matchScore": 95,
       "matchReason": "Short explanation of why this matches preferences",
       "openNow": true,
-      "categories": ["Bar", "Sports Bar"]
+      "categories": ["Bar", "Sports Bar"],
+      "regularPrices": { "beer": 7.00, "cocktail": 12.00, "wine": 10.00 },
+      "happyHourPrices": { "beer": 4.00, "cocktail": 7.00, "wine": 6.00 },
+      "todayHappyHourStart": "15:00",
+      "todayHappyHourEnd": "19:00"
     }
   ],
   "summary": "Brief 1-2 sentence summary of the best options found",
@@ -195,7 +213,10 @@ Based on these real venues and your knowledge of typical happy hour patterns for
   "currentTime": "${currentTime}"
 }
 
-Select the top 8 venues most relevant to the user's preferences. Sort by matchScore descending. Use your knowledge of typical happy hour patterns for bars and restaurants in this area. matchScore should be 0-100 based on how well the venue matches preferences.`;
+Select the top 8 venues most relevant to the user's preferences. Sort by matchScore descending. Use your knowledge of typical happy hour patterns for bars and restaurants in this area. matchScore should be 0-100 based on how well the venue matches preferences.
+
+For regularPrices and happyHourPrices, include realistic USD prices for beer, cocktail, and wine.
+For todayHappyHourStart and todayHappyHourEnd, use 24-hour "HH:MM" format based on today being ${currentDay}. Set both to null if the venue has no happy hour today.`;
     } else {
       systemPrompt = `You are a knowledgeable local happy hour expert with deep knowledge of bars and restaurants across the United States. You know typical happy hour schedules, current deals, and local bar scenes in detail. Always respond with valid JSON only, no markdown.`;
 
@@ -216,7 +237,11 @@ Based on your knowledge of the area "${searchLocation}", generate realistic happ
       "matchScore": 95,
       "matchReason": "Short explanation of why this matches preferences",
       "openNow": true,
-      "categories": ["Bar", "Restaurant"]
+      "categories": ["Bar", "Restaurant"],
+      "regularPrices": { "beer": 7.00, "cocktail": 12.00, "wine": 10.00 },
+      "happyHourPrices": { "beer": 4.00, "cocktail": 7.00, "wine": 6.00 },
+      "todayHappyHourStart": "15:00",
+      "todayHappyHourEnd": "19:00"
     }
   ],
   "summary": "Brief 1-2 sentence summary of the best options found",
@@ -224,7 +249,10 @@ Based on your knowledge of the area "${searchLocation}", generate realistic happ
   "currentTime": "${currentTime}"
 }
 
-Generate 6-8 realistic venues that would likely exist near "${searchLocation}". Sort by matchScore descending (0-100 based on preference match). Include a mix of bar types relevant to the preferences. Make deals specific and realistic for the area.`;
+Generate 6-8 realistic venues that would likely exist near "${searchLocation}". Sort by matchScore descending (0-100 based on preference match). Include a mix of bar types relevant to the preferences. Make deals specific and realistic for the area.
+
+For regularPrices and happyHourPrices, include realistic USD prices for beer, cocktail, and wine.
+For todayHappyHourStart and todayHappyHourEnd, use 24-hour "HH:MM" format based on today being ${currentDay}. Set both to null if the venue has no happy hour today.`;
     }
 
     const prompt = `${systemPrompt}\n\n${userPrompt}`;
