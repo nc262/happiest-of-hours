@@ -179,7 +179,7 @@ export async function POST(request: NextRequest) {
     let userPrompt: string;
 
     if (venuesContext) {
-      systemPrompt = `You are a knowledgeable local happy hour expert. Given a list of real venues near the user, you will identify the best happy hour options based on their preferences. You have deep knowledge of typical happy hour schedules, deals, and what different bar/restaurant types typically offer. Always respond with valid JSON only, no markdown.`;
+      systemPrompt = `You are a knowledgeable local happy hour expert. Given a list of real venues near the user, you will identify the best happy hour drink deals based on their preferences. Focus exclusively on drink deals (beer, wine, cocktails, spirits). Always respond with valid JSON only, no markdown.`;
 
       userPrompt = `The user is looking for happy hour deals near ${searchLocation} within ${radiusMiles} miles. Current time: ${currentTime} on ${currentDay}. User preferences: ${preferencesText}.
 
@@ -197,7 +197,7 @@ Based on these real venues and your knowledge of typical happy hour patterns for
       "rating": 4.2,
       "priceLevel": "$$",
       "happyHourTimes": "Mon-Fri 3-7pm",
-      "deals": ["$3 draft beers", "$5 well drinks", "Half-price appetizers"],
+      "deals": ["$3 draft beers", "$5 well drinks", "$6 house wine"],
       "matchScore": 95,
       "matchReason": "Short explanation of why this matches preferences",
       "openNow": true,
@@ -218,7 +218,7 @@ Select the top 8 venues most relevant to the user's preferences. Sort by matchSc
 For regularPrices and happyHourPrices, include realistic USD prices for beer, cocktail, and wine.
 For todayHappyHourStart and todayHappyHourEnd, use 24-hour "HH:MM" format based on today being ${currentDay}. Set both to null if the venue has no happy hour today.`;
     } else {
-      systemPrompt = `You are a knowledgeable local happy hour expert with deep knowledge of bars and restaurants across the United States. You know typical happy hour schedules, current deals, and local bar scenes in detail. Always respond with valid JSON only, no markdown.`;
+      systemPrompt = `You are a knowledgeable local happy hour expert with deep knowledge of bars and restaurants across the United States. You know typical happy hour schedules, current drink deals, and local bar scenes in detail. Focus exclusively on drink deals (beer, wine, cocktails, spirits). Always respond with valid JSON only, no markdown.`;
 
       userPrompt = `The user is looking for happy hour deals near "${searchLocation}" within ${radiusMiles} miles. Current time: ${currentTime} on ${currentDay}. User preferences: ${preferencesText}.
 
@@ -233,7 +233,7 @@ Based on your knowledge of the area "${searchLocation}", generate realistic happ
       "rating": 4.2,
       "priceLevel": "$$",
       "happyHourTimes": "Mon-Fri 3-7pm",
-      "deals": ["$3 draft beers", "$5 well drinks", "Half-price appetizers"],
+      "deals": ["$3 draft beers", "$5 well drinks", "$6 house wine"],
       "matchScore": 95,
       "matchReason": "Short explanation of why this matches preferences",
       "openNow": true,

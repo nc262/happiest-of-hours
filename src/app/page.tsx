@@ -10,8 +10,6 @@ const PREFERENCE_OPTIONS = [
   { id: "cocktails", label: "Cocktails 🍸", group: "drinks" },
   { id: "wine", label: "Wine 🍷", group: "drinks" },
   { id: "non-alcoholic", label: "Non-Alcoholic 🥤", group: "drinks" },
-  { id: "food", label: "Food 🍔", group: "food" },
-  { id: "appetizers", label: "Appetizers 🥨", group: "food" },
   { id: "kid-friendly", label: "Kid Friendly 👶", group: "vibe" },
   { id: "sports-bar", label: "Sports Bar 🏈", group: "vibe" },
   { id: "outdoor-seating", label: "Outdoor Seating 🌿", group: "vibe" },
@@ -130,7 +128,6 @@ export default function Home() {
 
   const groupLabels: Record<string, string> = {
     drinks: "Drinks",
-    food: "Food",
     vibe: "Vibe & Atmosphere",
   };
 
