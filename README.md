@@ -1,6 +1,6 @@
 # Happiest of Hours 🍻
 
-AI-powered happy hour finder — discover the best happy hour deals near you, personalised by your preferences.
+AI-powered happy hour finder — discover the best happy hour deals near you, personalized by your preferences.
 
 ## Features
 
