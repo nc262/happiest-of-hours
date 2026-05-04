@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import OpenAI from "openai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export interface SearchRequest {
   address: string;
@@ -99,15 +99,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const openaiApiKey = process.env.OPENAI_API_KEY;
-    if (!openaiApiKey) {
+    const geminiApiKey = process.env.GEMINI_API_KEY;
+    if (!geminiApiKey) {
       return Response.json(
-        { error: "OpenAI API key is not configured." },
+        { error: "Gemini API key is not configured." },
         { status: 500 }
       );
     }
 
-    const openai = new OpenAI({ apiKey: openaiApiKey });
+    const genAI = new GoogleGenerativeAI(geminiApiKey);
+    const geminiModel = genAI.getGenerativeModel({
+      model: "gemini-1.5-flash",
+      generationConfig: { responseMimeType: "application/json", temperature: 0.7, maxOutputTokens: 2500 },
+    });
     const googleApiKey = process.env.GOOGLE_PLACES_API_KEY;
 
     const radiusMeters = Math.round(radiusMiles * 1609.34);
@@ -223,18 +227,9 @@ Based on your knowledge of the area "${searchLocation}", generate realistic happ
 Generate 6-8 realistic venues that would likely exist near "${searchLocation}". Sort by matchScore descending (0-100 based on preference match). Include a mix of bar types relevant to the preferences. Make deals specific and realistic for the area.`;
     }
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt },
-      ],
-      temperature: 0.7,
-      max_tokens: 2500,
-      response_format: { type: "json_object" },
-    });
-
-    const content = completion.choices[0]?.message?.content;
+    const prompt = `${systemPrompt}\n\n${userPrompt}`;
+    const result = await geminiModel.generateContent(prompt);
+    const content = result.response.text();
     if (!content) {
       return Response.json(
         { error: "No response from AI." },
