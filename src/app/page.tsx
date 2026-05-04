@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from "react";
 import VenueCard from "@/components/VenueCard";
+import PriceDashboard from "@/components/PriceDashboard";
 import type { HappyHourVenue, SearchResponse } from "@/app/api/search/route";
 
 const PREFERENCE_OPTIONS = [
@@ -278,6 +279,13 @@ export default function Home() {
                 📍 {results.searchLocation} · 🕐 {results.currentTime}
               </p>
             </div>
+
+            {/* Price Dashboard */}
+            <PriceDashboard
+              venues={results.venues}
+              preferences={preferences}
+              currentTime={results.currentTime}
+            />
 
             {/* Venue cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
