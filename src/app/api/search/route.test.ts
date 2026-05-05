@@ -134,7 +134,12 @@ describe("POST /api/search", () => {
       json: async () => placesResult,
     });
 
+    // Primary search response
     mockGenerateContent.mockResolvedValueOnce(geminiResponse(VALID_SEARCH_RESPONSE));
+    // Self-critique response (second call)
+    mockGenerateContent.mockResolvedValueOnce(
+      geminiResponse({ qualityScore: 90, issues: [], improvedResponse: null })
+    );
 
     const req = makeRequest({
       address: "Austin, TX",
@@ -145,8 +150,9 @@ describe("POST /api/search", () => {
     });
     const res = await POST(req);
     expect(res.status).toBe(200);
-    // Gemini was called with places context injected into the prompt
-    expect(mockGenerateContent).toHaveBeenCalledOnce();
+    // Gemini was called with places context injected into the prompt (first call)
+    // and once more for self-critique
+    expect(mockGenerateContent).toHaveBeenCalledTimes(2);
     const callArg: string = mockGenerateContent.mock.calls[0][0];
     expect(callArg).toContain("Real Bar");
   });
