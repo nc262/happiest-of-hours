@@ -30,7 +30,7 @@ const RADIUS_OPTIONS = [
 ];
 
 export default function Home() {
-  const { memory, recordSearch, buildPersonalisationContext } = useMemory();
+  const { memory, recordSearch, buildPersonalizationContext } = useMemory();
 
   const [address, setAddress] = useState("");
   const [latitude, setLatitude] = useState<number | undefined>(undefined);
@@ -107,7 +107,7 @@ export default function Home() {
       setResults(null);
       setStreamingText("");
 
-      const personalisationContext = buildPersonalisationContext();
+      const personalizationContext = buildPersonalizationContext();
 
       try {
         if (useStreaming) {
@@ -121,7 +121,7 @@ export default function Home() {
               longitude,
               radiusMiles,
               preferences,
-              personalisationContext,
+              personalizationContext,
             }),
           });
           if (!res.body) throw new Error("No stream body.");
@@ -188,7 +188,7 @@ export default function Home() {
               longitude,
               radiusMiles,
               preferences,
-              personalisationContext,
+              personalizationContext,
             }),
           });
 
@@ -206,7 +206,7 @@ export default function Home() {
         setLoading(false);
       }
     },
-    [address, latitude, longitude, radiusMiles, preferences, useStreaming, buildPersonalisationContext, recordSearch]
+    [address, latitude, longitude, radiusMiles, preferences, useStreaming, buildPersonalizationContext, recordSearch]
   );
 
   const groupedPrefs: Record<string, typeof PREFERENCE_OPTIONS> = {};

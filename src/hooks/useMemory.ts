@@ -84,10 +84,10 @@ export function useMemory() {
   }, []);
 
   /**
-   * Returns a short personalisation string to prepend to the AI prompt,
+   * Returns a short personalization string to prepend to the AI prompt,
    * e.g. "User history: often searches Austin, TX; frequent preferences: beer, cocktails."
    */
-  const buildPersonalisationContext = useCallback((): string => {
+  const buildPersonalizationContext = useCallback((): string => {
     const { recentSearches, preferenceFrequency } = memory;
     if (recentSearches.length === 0) return "";
 
@@ -109,6 +109,6 @@ export function useMemory() {
     memory,
     recordSearch,
     clearMemory,
-    buildPersonalisationContext,
+    buildPersonalizationContext,
   };
 }

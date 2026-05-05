@@ -262,17 +262,17 @@ export async function POST(request: NextRequest) {
     const preferencesText =
       preferences.length > 0 ? preferences.join(", ") : "no specific preferences";
 
-    // Optionally inject personalisation context passed from the client
-    const personalisationContext =
-      (body as SearchRequest & { personalisationContext?: string })
-        .personalisationContext ?? "";
+    // Optionally inject personalization context passed from the client
+    const personalizationContext =
+      (body as SearchRequest & { personalizationContext?: string })
+        .personalizationContext ?? "";
 
     let systemPrompt: string;
     let userPrompt: string;
     const jsonSchema = buildJsonSchema(searchLocation, currentTime);
 
     if (venuesContext) {
-      systemPrompt = `You are a knowledgeable local happy hour expert. Given a list of real venues near the user, you will identify the best happy hour drink deals based on their preferences. Focus exclusively on drink deals (beer, wine, cocktails, spirits). Always respond with valid JSON only, no markdown.${ragContext ? "\n\n" + ragContext : ""}${personalisationContext ? "\n\n" + personalisationContext : ""}`;
+      systemPrompt = `You are a knowledgeable local happy hour expert. Given a list of real venues near the user, you will identify the best happy hour drink deals based on their preferences. Focus exclusively on drink deals (beer, wine, cocktails, spirits). Always respond with valid JSON only, no markdown.${ragContext ? "\n\n" + ragContext : ""}${personalizationContext ? "\n\n" + personalizationContext : ""}`;
 
       userPrompt = `The user is looking for happy hour deals near ${searchLocation} within ${radiusMiles} miles. Current time: ${currentTime} on ${currentDay}. User preferences: ${preferencesText}.
 
@@ -287,7 +287,7 @@ Select the top 8 venues most relevant to the user's preferences. Sort by matchSc
 For regularPrices and happyHourPrices, include realistic USD prices for beer, cocktail, and wine.
 For todayHappyHourStart and todayHappyHourEnd, use 24-hour "HH:MM" format based on today being ${currentDay}. Set both to null if the venue has no happy hour today.`;
     } else {
-      systemPrompt = `You are a knowledgeable local happy hour expert with deep knowledge of bars and restaurants across the United States. You know typical happy hour schedules, current drink deals, and local bar scenes in detail. Focus exclusively on drink deals (beer, wine, cocktails, spirits). Always respond with valid JSON only, no markdown.${ragContext ? "\n\n" + ragContext : ""}${personalisationContext ? "\n\n" + personalisationContext : ""}`;
+      systemPrompt = `You are a knowledgeable local happy hour expert with deep knowledge of bars and restaurants across the United States. You know typical happy hour schedules, current drink deals, and local bar scenes in detail. Focus exclusively on drink deals (beer, wine, cocktails, spirits). Always respond with valid JSON only, no markdown.${ragContext ? "\n\n" + ragContext : ""}${personalizationContext ? "\n\n" + personalizationContext : ""}`;
 
       userPrompt = `The user is looking for happy hour deals near "${searchLocation}" within ${radiusMiles} miles. Current time: ${currentTime} on ${currentDay}. User preferences: ${preferencesText}.
 

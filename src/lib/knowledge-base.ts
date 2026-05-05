@@ -104,7 +104,7 @@ export function retrieveChunks(query: string, topN = 4): KnowledgeChunk[] {
 export function buildRagContext(chunks: KnowledgeChunk[]): string {
   if (chunks.length === 0) return "";
   return (
-    "KNOWLEDGE BASE CONTEXT (use as background, prioritise real venue data):\n" +
+    "KNOWLEDGE BASE CONTEXT (use as background, prioritize real venue data):\n" +
     chunks.map((c) => `- ${c.content}`).join("\n")
   );
 }
