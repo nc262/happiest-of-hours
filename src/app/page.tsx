@@ -3,6 +3,9 @@
 import { useState, useCallback } from "react";
 import VenueCard from "@/components/VenueCard";
 import PriceDashboard from "@/components/PriceDashboard";
+import ChatPanel from "@/components/ChatPanel";
+import ImageScanner from "@/components/ImageScanner";
+import { useMemory } from "@/hooks/useMemory";
 import type { HappyHourVenue, SearchResponse } from "@/app/api/search/route";
 
 const PREFERENCE_OPTIONS = [
@@ -27,15 +30,26 @@ const RADIUS_OPTIONS = [
 ];
 
 export default function Home() {
+  const { memory, recordSearch, buildPersonalisationContext } = useMemory();
+
   const [address, setAddress] = useState("");
   const [latitude, setLatitude] = useState<number | undefined>(undefined);
   const [longitude, setLongitude] = useState<number | undefined>(undefined);
   const [radiusMiles, setRadiusMiles] = useState(2);
-  const [preferences, setPreferences] = useState<string[]>([]);
+  // Pre-fill top preferences from memory on first render
+  const [preferences, setPreferences] = useState<string[]>(() => {
+    const freq = memory.preferenceFrequency;
+    return Object.entries(freq)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 2)
+      .map(([k]) => k);
+  });
   const [loading, setLoading] = useState(false);
   const [geoLoading, setGeoLoading] = useState(false);
   const [results, setResults] = useState<SearchResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [useStreaming, setUseStreaming] = useState(false);
+  const [streamingText, setStreamingText] = useState("");
 
   const togglePreference = useCallback((id: string) => {
     setPreferences((prev) =>
@@ -91,33 +105,108 @@ export default function Home() {
       setLoading(true);
       setError(null);
       setResults(null);
+      setStreamingText("");
+
+      const personalisationContext = buildPersonalisationContext();
 
       try {
-        const res = await fetch("/api/search", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            address,
-            latitude,
-            longitude,
-            radiusMiles,
-            preferences,
-          }),
-        });
+        if (useStreaming) {
+          // Streaming path: SSE endpoint
+          const res = await fetch("/api/search/stream", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              address,
+              latitude,
+              longitude,
+              radiusMiles,
+              preferences,
+              personalisationContext,
+            }),
+          });
+          if (!res.body) throw new Error("No stream body.");
 
-        const data = await res.json();
+          const reader = res.body.getReader();
+          const decoder = new TextDecoder();
+          let buffer = "";
 
-        if (!res.ok) {
-          throw new Error(data.error ?? "Search failed.");
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+
+            // Parse SSE lines
+            const lines = buffer.split("\n");
+            buffer = lines.pop() ?? "";
+
+            for (const line of lines) {
+              if (line.startsWith("data: ")) {
+                try {
+                  const payload = JSON.parse(line.slice(6));
+                  if (payload.text) {
+                    setStreamingText((t) => t + payload.text);
+                  }
+                } catch {
+                  // skip unparseable lines
+                }
+              } else if (line.startsWith("event: done")) {
+                // next data line is the final result — handled in next iteration
+              } else if (line.startsWith("event: error")) {
+                // next data line has error — fall through
+              }
+            }
+          }
+
+          // The 'done' event carries the full parsed result; re-parse from buffer
+          // by finding the last complete data line
+          const allLines = buffer.split("\n");
+          for (const line of allLines) {
+            if (line.startsWith("data: ")) {
+              try {
+                const payload = JSON.parse(line.slice(6));
+                if (payload.venues) {
+                  setResults(payload as SearchResponse);
+                  recordSearch(address, preferences);
+                }
+                if (payload.message) throw new Error(payload.message);
+              } catch (parseErr) {
+                if (parseErr instanceof Error && parseErr.message !== "Unexpected end of JSON input") {
+                  throw parseErr;
+                }
+              }
+            }
+          }
+          setStreamingText("");
+        } else {
+          // Standard JSON path
+          const res = await fetch("/api/search", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              address,
+              latitude,
+              longitude,
+              radiusMiles,
+              preferences,
+              personalisationContext,
+            }),
+          });
+
+          const data = await res.json();
+
+          if (!res.ok) {
+            throw new Error(data.error ?? "Search failed.");
+          }
+          setResults(data as SearchResponse);
+          recordSearch(address, preferences);
         }
-        setResults(data as SearchResponse);
       } catch (err) {
         setError(err instanceof Error ? err.message : "An unexpected error occurred.");
       } finally {
         setLoading(false);
       }
     },
-    [address, latitude, longitude, radiusMiles, preferences]
+    [address, latitude, longitude, radiusMiles, preferences, useStreaming, buildPersonalisationContext, recordSearch]
   );
 
   const groupedPrefs: Record<string, typeof PREFERENCE_OPTIONS> = {};
@@ -147,6 +236,31 @@ export default function Home() {
       </header>
 
       <main className="max-w-4xl mx-auto px-4 py-8">
+        {/* Recent searches (memory) */}
+        {memory.recentSearches.length > 0 && !results && !loading && (
+          <div className="mb-4">
+            <p className="text-xs font-semibold text-gray-500 mb-1.5">🕐 Recent searches</p>
+            <div className="flex flex-wrap gap-2">
+              {memory.recentSearches.map((s, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => {
+                    setAddress(s.location);
+                    setPreferences(s.preferences);
+                  }}
+                  className="text-xs px-3 py-1.5 bg-white border border-gray-200 rounded-full text-gray-600 hover:border-amber-400 hover:text-amber-700 transition-colors shadow-sm"
+                >
+                  📍 {s.location}
+                  {s.preferences.length > 0 && (
+                    <span className="ml-1 text-gray-400">· {s.preferences.slice(0, 2).join(", ")}</span>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Search Form */}
         <form
           onSubmit={handleSearch}
@@ -243,6 +357,36 @@ export default function Home() {
             </div>
           </div>
 
+          {/* Streaming toggle */}
+          <div className="mb-5 flex items-center justify-between">
+            <label className="text-sm font-semibold text-gray-700">
+              ⚡ AI Mode
+            </label>
+            <div className="flex items-center gap-2">
+              <span className={`text-xs ${!useStreaming ? "text-amber-700 font-medium" : "text-gray-400"}`}>
+                Standard
+              </span>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={useStreaming}
+                onClick={() => setUseStreaming((v) => !v)}
+                className={`relative w-10 h-5 rounded-full transition-colors ${
+                  useStreaming ? "bg-amber-500" : "bg-gray-200"
+                }`}
+              >
+                <span
+                  className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${
+                    useStreaming ? "translate-x-5" : "translate-x-0"
+                  }`}
+                />
+              </button>
+              <span className={`text-xs ${useStreaming ? "text-amber-700 font-medium" : "text-gray-400"}`}>
+                Streaming
+              </span>
+            </div>
+          </div>
+
           {/* Submit */}
           <button
             type="submit"
@@ -265,16 +409,44 @@ export default function Home() {
           )}
         </form>
 
+        {/* Streaming preview */}
+        {loading && useStreaming && streamingText && (
+          <div className="mb-8 p-4 bg-white rounded-2xl border border-amber-100 shadow-sm">
+            <p className="text-xs font-semibold text-amber-600 mb-2">⚡ Streaming live…</p>
+            <pre className="text-xs text-gray-600 whitespace-pre-wrap overflow-auto max-h-32 font-mono">
+              {streamingText}
+            </pre>
+          </div>
+        )}
+
         {/* Results */}
         {results && (
           <div>
             {/* Summary */}
             <div className="mb-5 p-4 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-900">
-              <span className="font-semibold">🤖 AI Summary:</span>{" "}
-              {results.summary}
-              <p className="mt-1 text-xs text-amber-600">
-                📍 {results.searchLocation} · 🕐 {results.currentTime}
-              </p>
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <span className="font-semibold">🤖 AI Summary:</span>{" "}
+                  {results.summary}
+                  <p className="mt-1 text-xs text-amber-600">
+                    📍 {results.searchLocation} · 🕐 {results.currentTime}
+                  </p>
+                </div>
+                {results.qualityScore !== undefined && (
+                  <div
+                    className={`shrink-0 text-xs font-semibold px-2.5 py-1 rounded-full border ${
+                      results.qualityScore >= 80
+                        ? "bg-green-50 text-green-700 border-green-200"
+                        : results.qualityScore >= 60
+                        ? "bg-yellow-50 text-yellow-700 border-yellow-200"
+                        : "bg-red-50 text-red-600 border-red-200"
+                    }`}
+                    title={results.retriedWithCritique ? "Self-critique retry applied" : "Quality score"}
+                  >
+                    {results.retriedWithCritique ? "✨ " : ""}Quality: {results.qualityScore}%
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Price Dashboard */}
@@ -298,6 +470,15 @@ export default function Home() {
                 <p className="text-sm mt-1">Try adjusting your preferences or expanding the radius.</p>
               </div>
             )}
+
+            {/* Image Scanner */}
+            <ImageScanner />
+
+            {/* Conversational refinement chat */}
+            <ChatPanel
+              searchResults={results}
+              onResultsRefined={(refined) => setResults(refined)}
+            />
 
             <p className="mt-6 text-xs text-center text-gray-400">
               Results are AI-generated based on available data and may not reflect current hours or prices. Always verify with the venue directly.
