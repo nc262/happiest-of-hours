@@ -78,11 +78,11 @@ export async function POST(request: NextRequest) {
         preferences.length > 0 ? preferences.join(", ") : "no specific preferences";
       const searchLocation = address || `${latitude?.toFixed(4)}, ${longitude?.toFixed(4)}`;
 
-      const prompt = `You are a happy hour expert. ${ragContext ? ragContext + "\n\n" : ""}Find happy hour deals near "${searchLocation}" within ${radiusMiles} miles. Current time: ${currentTime} on ${currentDay}. Preferences: ${preferencesText}.
+      const prompt = `You are a bar and restaurant expert. ${ragContext ? ragContext + "\n\n" : ""}Find the best drink prices near "${searchLocation}" within ${radiusMiles} miles. Current time: ${currentTime} on ${currentDay}. Preferences: ${preferencesText}.
 
-Return a JSON object with venues array and summary. Each venue: id, name, address, distance, rating, priceLevel, happyHourTimes, deals (array), matchScore (0-100), matchReason, openNow, categories (array), regularPrices {beer,cocktail,wine}, happyHourPrices {beer,cocktail,wine}, todayHappyHourStart (HH:MM or null), todayHappyHourEnd (HH:MM or null).
+Return a JSON object with venues array and summary. Each venue: id, name, address, distance, rating, priceLevel, happyHourTimes, deals (array of drink specials including happy hour when cheaper), matchScore (0-100), matchReason, openNow, categories (array), regularPrices {beer,cocktail,wine} (prices at any time), happyHourPrices {beer,cocktail,wine} (only include if cheaper than regularPrices), todayHappyHourStart (HH:MM or null), todayHappyHourEnd (HH:MM or null).
 
-Generate 6-8 realistic venues sorted by matchScore descending. Return ONLY valid JSON.`;
+Generate 6-8 realistic venues sorted by matchScore descending. Show realistic drink prices for the area. Return ONLY valid JSON.`;
 
       // Stream the response from Gemini
       const streamResult = await geminiModel.generateContentStream(prompt);
